@@ -54,10 +54,17 @@ public class ChatService : IChatService
 
     public async Task<AssistantMessage?> AddMessage(string threadId, string message)
     {
+        // Получаем рекомендации
+        string recommendations = await GetProductRecommendations(message);
+
+        // Добавляем рекомендации к сообщению пользователю, пржде чем отправить его в Ассистенту, чтобы ассистент мог использовать эту информацию
+        // и либо сразу выдать ответь, либо запросить дополнительные данные, например функцию
+        string combinedInput = $"User Query: {message}\nAdditional Information: {recommendations}";
+
         var requestJson = new
         {
             role = "user",
-            content = message
+            content = combinedInput
         };
 
         string json = JsonConvert.SerializeObject(requestJson);
@@ -152,6 +159,10 @@ public class ChatService : IChatService
             HttpContent content = new StringContent(jsonString, Encoding.UTF8, "application/json");
 
             await _client.PostAsync($"https://api.openai.com/v1/threads/{threadId}/runs/{runId}/submit_tool_outputs", content);
+        }
+        else if (functionName == "get_product_recommendations")
+        {
+            await HandleProductRecommendations(threadId, runId, runResponse);
         }
         else if (functionName is "initRate")
         {
@@ -262,5 +273,54 @@ public class ChatService : IChatService
         result = Regex.Replace(result, pattern3, "*");
 
         return result;
+    }
+
+    private async Task HandleProductRecommendations(string threadId, string runId, AssistantRetrieveRun runResponse)
+    {
+        string argumentsJson = runResponse?.RequiredAction.SubmitToolOutputs.ToolCalls[0].Function.Arguments;
+
+        dynamic arguments = JsonConvert.DeserializeObject(argumentsJson);
+
+        string query = arguments.query;
+
+        // Получаем рекомендации еще раз, если Ассистент подумал, что это необходимо, но с другими параметрами, которые он выявил из запроса пользователя
+        string recommendations = await GetProductRecommendations(query);
+
+        var jsonData = new
+        {
+            tool_outputs = new[]
+            {
+                new
+                {
+                    tool_call_id = runResponse?.RequiredAction.SubmitToolOutputs.ToolCalls[0].Id,
+                    output = recommendations
+                }
+            }
+        };
+
+        string jsonString = JsonConvert.SerializeObject(jsonData);
+
+        HttpContent content = new StringContent(jsonString, Encoding.UTF8, "application/json");
+
+        await _client.PostAsync($"https://api.openai.com/v1/threads/{threadId}/runs/{runId}/submit_tool_outputs", content);
+    }
+
+    private async Task<string> GetProductRecommendations(string userInput)
+    {
+        var recommendationRequest = new
+        {
+            query = userInput
+        };
+
+        string recommendationJson = JsonConvert.SerializeObject(recommendationRequest);
+
+        HttpContent recommendationContent = new StringContent(recommendationJson, Encoding.UTF8, "application/json");
+        // Отправляем запрос на сервис рекомендаций, который находится на порту 5001
+        var recommendationResponse = await _client.PostAsync("http://localhost:5001/recommendations", recommendationContent);
+        recommendationResponse.EnsureSuccessStatusCode();
+
+        string recommendationResponseBody = await recommendationResponse.Content.ReadAsStringAsync();
+
+        return recommendationResponseBody;
     }
 }

@@ -1,0 +1,14 @@
+# Python
+*.pyc
+__pycache__/
+
+# Environment
+.env
+venv/
+ENV/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+
+# Models
+models/
