@@ -21,8 +21,14 @@ stop:
 # First start
 start: clean-docker build run
 
+# Start without cleaning the Docker image
+start-no-clean: build run
+
 # Rebuild the Docker image and run the container
 rebuild: stop clean-docker build run
+
+# Rebuild the Docker image and run the container without cleaning the image
+rebuild-no-clean: stop build run
 
 # Show logs from the running container
 logs:

@@ -13,7 +13,6 @@ ENV PATH="/opt/venv/bin:$PATH"
 RUN pip install faiss-cpu sentence-transformers numpy flask openai gunicorn python-dotenv
 
 # Copy application files
-COPY utils.py /app/
 COPY app.py /app/
 COPY create_faiss_qa_index.py /app/
 COPY create_faiss_index.py /app/
@@ -21,6 +20,7 @@ COPY database /app/database/
 COPY models /app/models
 COPY .env /app/
 
+COPY utils.py /app/
 WORKDIR /app
 
 # Run the Flask application with Gunicorn

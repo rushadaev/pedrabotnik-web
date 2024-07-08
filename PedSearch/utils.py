@@ -213,9 +213,9 @@ def get_product_recommendations(query):
     dialogs = load_qa_data()
 
     category_response = get_chatgpt_response(query)
-    category = category_response.get('category', '').lower()
+    category = category_response.get('category', '').lower() if category_response.get('category') else ''
     subcategory = category_response.get('subcategory', '').lower() if category_response.get('subcategory') else ''
-    query_text = category_response.get('query', '').lower()
+    query_text = category_response.get('query', '').lower() if category_response.get('query') else ''
 
     if category == 'courses':
         qa_indices = search_qa(query, qa_index)
